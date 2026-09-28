@@ -1,1 +1,133 @@
-const featureCards=document.querySelectorAll(".feature-card");const sections=document.querySelectorAll(".tool-section");function activateSection(name){featureCards.forEach(c=>c.classList.toggle("active",c.dataset.section===name));sections.forEach(s=>s.classList.toggle("active",s.id===`${name}-section`))}featureCards.forEach(c=>c.addEventListener("click",()=>activateSection(c.dataset.section)));async function apiRequest(url,data,button,resultElement){button.disabled=true;button.dataset.originalText=button.textContent;button.textContent="Thinking...";resultElement.classList.add("visible");resultElement.innerHTML='<div class="loading">EduGenie is thinking...</div>';try{const response=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(data)});const result=await response.json();if(!response.ok)throw new Error(result.detail||"Request failed.");if(result.success===false)throw new Error(result.error||"EduGenie could not complete the request.");return result}finally{button.disabled=false;button.textContent=button.dataset.originalText}}document.getElementById("ask-button").addEventListener("click",async()=>{const question=document.getElementById("ask-question").value.trim(),context=document.getElementById("ask-context").value.trim(),button=document.getElementById("ask-button"),out=document.getElementById("ask-result");if(!question){out.classList.add("visible");out.textContent="Please enter a question.";return}try{const r=await apiRequest("/api/ask",{question,context},button,out);out.textContent=r.response}catch(e){out.textContent=e.message}});document.getElementById("explain-button").addEventListener("click",async()=>{const topic=document.getElementById("explain-topic").value.trim(),level=document.getElementById("explain-level").value,language=document.getElementById("explain-language").value,button=document.getElementById("explain-button"),out=document.getElementById("explain-result");if(!topic){out.classList.add("visible");out.textContent="Please enter a topic.";return}try{const r=await apiRequest("/api/explain",{topic,level,language},button,out);out.textContent=r.response}catch(e){out.textContent=e.message}});document.getElementById("quiz-button").addEventListener("click",async()=>{const topic=document.getElementById("quiz-topic").value.trim(),number_of_questions=Number(document.getElementById("quiz-count").value),difficulty=document.getElementById("quiz-difficulty").value,button=document.getElementById("quiz-button"),out=document.getElementById("quiz-result");if(!topic){out.classList.add("visible");out.textContent="Please enter a quiz topic.";return}try{const r=await apiRequest("/api/quiz",{topic,number_of_questions,difficulty},button,out);renderQuiz(r.questions,out)}catch(e){out.textContent=e.message}});function renderQuiz(questions,out){out.innerHTML="";questions.forEach((item,i)=>{const w=document.createElement("div");w.className="quiz-question";const h=document.createElement("h3");h.textContent=`${i+1}. ${item.question}`;w.appendChild(h);item.options.forEach(o=>{const d=document.createElement("div");d.className="quiz-option";d.textContent=o;w.appendChild(d)});const a=document.createElement("div");a.className="quiz-answer";a.textContent=`Answer: ${item.answer}`;const x=document.createElement("div");x.textContent=`Explanation: ${item.explanation}`;w.append(a,x);out.appendChild(w)})}document.getElementById("summarize-button").addEventListener("click",async()=>{const content=document.getElementById("summary-content").value.trim(),length=document.getElementById("summary-length").value,button=document.getElementById("summarize-button"),out=document.getElementById("summarize-result");if(!content){out.classList.add("visible");out.textContent="Please paste some content.";return}try{const r=await apiRequest("/api/summarize",{content,length},button,out);out.textContent=r.response}catch(e){out.textContent=e.message}});document.getElementById("learning-button").addEventListener("click",async()=>{const subject=document.getElementById("learning-subject").value.trim(),current_level=document.getElementById("learning-level").value.trim()||"beginner",goal=document.getElementById("learning-goal").value.trim(),button=document.getElementById("learning-button"),out=document.getElementById("learning-result");if(!subject||!goal){out.classList.add("visible");out.textContent="Please enter the subject and learning goal.";return}try{const r=await apiRequest("/api/learn/recommendations",{subject,current_level,goal},button,out);out.textContent=r.response}catch(e){out.textContent=e.message}});
+const result = document.getElementById("result");
+const statusEl = document.getElementById("status");
+
+document.querySelectorAll(".tab").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".tab").forEach(b => b.classList.remove("active"));
+    document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
+    btn.classList.add("active");
+    document.getElementById(btn.dataset.tab).classList.add("active");
+  });
+});
+
+async function api(path, body) {
+  result.textContent = "Thinking…";
+  const response = await fetch(path, {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify(body)
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.detail || "Request failed.");
+  return data;
+}
+
+function showText(text) {
+  result.textContent = text;
+  window.scrollTo({top: document.body.scrollHeight, behavior: "smooth"});
+}
+
+async function askQuestion() {
+  try {
+    const data = await api("/ask", {
+      question: value("ask-question"),
+      context: value("ask-context")
+    });
+    showText(data.result);
+  } catch (e) { showError(e); }
+}
+
+async function explainTopic() {
+  try {
+    const data = await api("/explain", {text: value("explain-topic")});
+    showText(data.result);
+  } catch (e) { showError(e); }
+}
+
+async function summarize() {
+  try {
+    const data = await api("/summarize", {text: value("summary-text")});
+    showText(data.result);
+  } catch (e) { showError(e); }
+}
+
+async function learningPath() {
+  try {
+    const data = await api("/learn/recommendations", {
+      topic: value("learn-topic"),
+      level: value("learn-level")
+    });
+    showText(data.result);
+  } catch (e) { showError(e); }
+}
+
+async function makeQuiz() {
+  try {
+    const data = await api("/quiz", {text: value("quiz-content")});
+    renderQuiz(data.quiz);
+  } catch (e) { showError(e); }
+}
+
+function renderQuiz(quiz) {
+  const container = document.getElementById("quiz-output");
+  container.innerHTML = "";
+  quiz.forEach((q, index) => {
+    const box = document.createElement("div");
+    box.className = "quiz-question";
+    const title = document.createElement("strong");
+    title.textContent = `${index + 1}. ${q.question}`;
+    box.appendChild(title);
+
+    q.options.forEach(option => {
+      const btn = document.createElement("button");
+      btn.className = "quiz-option";
+      btn.textContent = option;
+      btn.onclick = () => {
+        box.querySelectorAll(".quiz-option").forEach(b => b.disabled = true);
+        if (option === q.correct_answer) {
+          btn.classList.add("correct");
+          feedback.textContent = "Correct!";
+        } else {
+          btn.classList.add("wrong");
+          feedback.textContent = `Not quite. Correct answer: ${q.correct_answer}`;
+        }
+        explanation.textContent = q.explanation || "";
+      };
+      box.appendChild(btn);
+    });
+
+    const feedback = document.createElement("div");
+    feedback.className = "feedback";
+    const explanation = document.createElement("div");
+    explanation.className = "feedback";
+    box.appendChild(feedback);
+    box.appendChild(explanation);
+    container.appendChild(box);
+  });
+
+  result.textContent = "Quiz generated below. Select an option for instant feedback.";
+  container.scrollIntoView({behavior: "smooth", block: "start"});
+}
+
+function value(id) {
+  return document.getElementById(id).value.trim();
+}
+
+function showError(error) {
+  result.textContent = `Error: ${error.message}`;
+  result.classList.add("error");
+}
+
+async function copyResult() {
+  await navigator.clipboard.writeText(result.textContent);
+}
+
+fetch("/health")
+  .then(r => r.json())
+  .then(data => {
+    statusEl.textContent = data.gemini_configured
+      ? "Gemini API configured"
+      : "Gemini API key missing";
+    statusEl.style.color = data.gemini_configured ? "#067647" : "#b42318";
+  })
+  .catch(() => statusEl.textContent = "API unavailable");

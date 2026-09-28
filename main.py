@@ -1,62 +1,112 @@
+import json
+import logging
+import os
+import re
 from pathlib import Path
-from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse
+from typing import Any
+
+from dotenv import load_dotenv
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
+from pydantic import BaseModel, Field
 
-from app.config import settings
-from app.schemas import AskRequest, ExplainRequest, QuizRequest, SummarizeRequest, LearningPathRequest, AIResponse, QuizResponse
-from app.ai.gemini_client import gemini
-from app.modules.qna import ask_question
-from app.modules.explanation_module import explain_topic
-from app.modules.quiz_module import generate_quiz
-from app.modules.summarizer_module import summarize
-from app.modules.learning_path_module import generate_learning_path
+from explanation_module import explain_concept
+from qna_module import answer_question
+from quiz_module import generate_quiz
+from summary_module import summarize_text
+from learning_path import get_learning_recommendations
 
-BASE_DIR = Path(__file__).resolve().parent.parent
-app = FastAPI(title=settings.APP_NAME, version=settings.APP_VERSION, description="Google Gemini powered educational learning assistant.")
-app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
-templates = Jinja2Templates(directory=BASE_DIR / "templates")
+load_dotenv()
 
-@app.get("/", response_class=HTMLResponse)
-async def home(request: Request):
-    return templates.TemplateResponse(request=request, name="index.html")
+BASE_DIR = Path(__file__).resolve().parent
+STATIC_DIR = BASE_DIR / "static"
 
-@app.get("/api/health")
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("edugenie")
+
+app = FastAPI(
+    title="EduGenie",
+    description="Google Gemini powered learning assistant",
+    version="1.0.0",
+)
+
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
+
+class TextRequest(BaseModel):
+    text: str = Field(..., min_length=1, max_length=30000)
+
+
+class TopicRequest(BaseModel):
+    topic: str = Field(..., min_length=1, max_length=500)
+    level: str = Field(default="Beginner", max_length=50)
+
+
+class QuestionRequest(BaseModel):
+    question: str = Field(..., min_length=1, max_length=5000)
+    context: str = Field(default="", max_length=20000)
+
+
+@app.get("/", include_in_schema=False)
+async def home():
+    return FileResponse(STATIC_DIR / "index.html")
+
+
+@app.get("/health")
 async def health():
-    return {"status": "ok", "application": settings.APP_NAME, "version": settings.APP_VERSION, "gemini_configured": gemini.is_configured()}
+    return {
+        "status": "ok",
+        "service": "EduGenie",
+        "gemini_configured": bool(os.getenv("GEMINI_API_KEY")),
+    }
 
-@app.post("/api/ask", response_model=AIResponse)
-async def ask(request: AskRequest):
-    try:
-        return AIResponse(success=True, response=ask_question(request.question, request.context))
-    except Exception as exc:
-        return AIResponse(success=False, response="", error=str(exc))
 
-@app.post("/api/explain", response_model=AIResponse)
-async def explain(request: ExplainRequest):
+@app.post("/explain")
+async def explain(request: TextRequest):
     try:
-        return AIResponse(success=True, response=explain_topic(request.topic, request.level, request.language))
+        return {"result": explain_concept(request.text)}
     except Exception as exc:
-        return AIResponse(success=False, response="", error=str(exc))
+        logger.exception("Explain failed")
+        raise HTTPException(status_code=502, detail=str(exc))
 
-@app.post("/api/summarize", response_model=AIResponse)
-async def summarize_content(request: SummarizeRequest):
-    try:
-        return AIResponse(success=True, response=summarize(request.content, request.length))
-    except Exception as exc:
-        return AIResponse(success=False, response="", error=str(exc))
 
-@app.post("/api/quiz", response_model=QuizResponse)
-async def quiz(request: QuizRequest):
+@app.post("/ask")
+async def ask(request: QuestionRequest):
     try:
-        return QuizResponse(success=True, topic=request.topic, questions=generate_quiz(request.topic, request.number_of_questions, request.difficulty))
+        return {"result": answer_question(request.question, request.context)}
     except Exception as exc:
-        return QuizResponse(success=False, topic=request.topic, questions=[], error=str(exc))
+        logger.exception("Q&A failed")
+        raise HTTPException(status_code=502, detail=str(exc))
 
-@app.post("/api/learn/recommendations", response_model=AIResponse)
-async def learning_recommendations(request: LearningPathRequest):
+
+@app.post("/quiz")
+async def quiz(request: TextRequest):
     try:
-        return AIResponse(success=True, response=generate_learning_path(request.subject, request.current_level, request.goal))
+        return {"quiz": generate_quiz(request.text)}
     except Exception as exc:
-        return AIResponse(success=False, response="", error=str(exc))
+        logger.exception("Quiz failed")
+        raise HTTPException(status_code=502, detail=str(exc))
+
+
+@app.post("/summarize")
+async def summarize(request: TextRequest):
+    try:
+        return {"result": summarize_text(request.text)}
+    except Exception as exc:
+        logger.exception("Summary failed")
+        raise HTTPException(status_code=502, detail=str(exc))
+
+
+@app.post("/learn/recommendations")
+async def learning_recommendations(request: TopicRequest):
+    try:
+        return {"result": get_learning_recommendations(request.topic, request.level)}
+    except Exception as exc:
+        logger.exception("Learning path failed")
+        raise HTTPException(status_code=502, detail=str(exc))
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)

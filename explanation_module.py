@@ -1,9 +1,23 @@
-from app.ai.gemini_client import gemini
+from gemini_client import generate_text
 
-SYSTEM_PROMPT = """You are EduGenie's concept explanation tutor.
-Explain academic concepts according to the student's level using simple definitions, step-by-step explanations, real-world examples, important terminology, and a short recap."""
+SYSTEM = """
+You are EduGenie, a patient educational tutor.
+Explain concepts accurately and at a student-friendly level.
+Use simple language, short sections, examples, and step-by-step reasoning.
+Do not invent facts. If a topic is ambiguous, state the assumption briefly.
+"""
 
+def explain_concept(topic: str) -> str:
+    prompt = f"""
+Explain the following concept for a learner:
 
-def explain_topic(topic: str, level: str = "beginner", language: str = "English") -> str:
-    prompt = f"""Explain this topic for a student.\n\nTopic: {topic}\nStudent level: {level}\nPreferred language: {language}\n\nProvide: definition, basic explanation, how it works, example, important points, and short summary."""
-    return gemini.generate(prompt=prompt, system_instruction=SYSTEM_PROMPT)
+{topic}
+
+Format:
+1. Simple definition
+2. Key idea
+3. Step-by-step explanation
+4. One simple example
+5. Three quick points to remember
+"""
+    return generate_text(prompt, system_instruction=SYSTEM, temperature=0.25, max_output_tokens=1400)

@@ -1,1 +1,95 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>EduGenie - AI Learning Assistant</title><link rel="stylesheet" href="{{ url_for('static', path='style.css') }}"></head><body><header class="navbar"><div class="brand"><div class="brand-icon">E</div><div><h1>EduGenie</h1><span>AI Learning Assistant</span></div></div><div class="status"><span class="status-dot"></span>Gemini AI</div></header><main class="container"><section class="hero"><div class="hero-content"><span class="badge">GOOGLE GEMINI POWERED</span><h2>Learn smarter with <span>EduGenie</span></h2><p>Ask questions, understand difficult concepts, generate quizzes, summarize notes and build personalized learning paths.</p></div></section><section class="feature-grid"><button class="feature-card active" data-section="ask"><div class="feature-icon">💬</div><h3>Ask EduGenie</h3><p>Get answers to academic questions.</p></button><button class="feature-card" data-section="explain"><div class="feature-icon">💡</div><h3>Explain Topic</h3><p>Understand difficult concepts.</p></button><button class="feature-card" data-section="quiz"><div class="feature-icon">📝</div><h3>Generate Quiz</h3><p>Practice with AI questions.</p></button><button class="feature-card" data-section="summarize"><div class="feature-icon">📚</div><h3>Summarize</h3><p>Turn notes into summaries.</p></button><button class="feature-card" data-section="learning"><div class="feature-icon">🎯</div><h3>Learning Path</h3><p>Create a study roadmap.</p></button></section><section class="tool-section active" id="ask-section"><div class="section-heading"><h2>Ask EduGenie</h2><p>Ask anything related to your studies.</p></div><textarea id="ask-question" placeholder="Example: Explain object-oriented programming in simple terms..."></textarea><textarea id="ask-context" class="small-input" placeholder="Optional context..."></textarea><button class="primary-button" id="ask-button">Ask EduGenie</button><div class="result" id="ask-result"></div></section><section class="tool-section" id="explain-section"><div class="section-heading"><h2>Explain a Topic</h2><p>Learn a concept step-by-step.</p></div><input id="explain-topic" placeholder="Enter topic"><div class="form-row"><select id="explain-level"><option value="beginner">Beginner</option><option value="intermediate">Intermediate</option><option value="advanced">Advanced</option></select><select id="explain-language"><option>English</option><option>Tamil</option><option>Tanglish</option></select></div><button class="primary-button" id="explain-button">Explain Topic</button><div class="result" id="explain-result"></div></section><section class="tool-section" id="quiz-section"><div class="section-heading"><h2>Generate Quiz</h2><p>Create questions for practice.</p></div><input id="quiz-topic" placeholder="Example: Java OOP"><div class="form-row"><select id="quiz-count"><option value="5">5 Questions</option><option value="10">10 Questions</option><option value="15">15 Questions</option><option value="20">20 Questions</option></select><select id="quiz-difficulty"><option value="easy">Easy</option><option value="medium">Medium</option><option value="hard">Hard</option></select></div><button class="primary-button" id="quiz-button">Generate Quiz</button><div class="result" id="quiz-result"></div></section><section class="tool-section" id="summarize-section"><div class="section-heading"><h2>Summarize Notes</h2><p>Paste your study material below.</p></div><textarea id="summary-content" placeholder="Paste your notes here..."></textarea><select id="summary-length"><option value="short">Short</option><option value="medium" selected>Medium</option><option value="detailed">Detailed</option></select><button class="primary-button" id="summarize-button">Summarize</button><div class="result" id="summarize-result"></div></section><section class="tool-section" id="learning-section"><div class="section-heading"><h2>Build a Learning Path</h2><p>Generate a structured study roadmap.</p></div><input id="learning-subject" placeholder="Subject"><input id="learning-level" placeholder="Current level - Beginner"><input id="learning-goal" placeholder="What do you want to achieve?"><button class="primary-button" id="learning-button">Create Learning Path</button><div class="result" id="learning-result"></div></section></main><footer><p>EduGenie © 2026 | Google Gemini Powered Learning Assistant</p></footer><script src="{{ url_for('static', path='app.js') }}"></script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>EduGenie — AI Learning Assistant</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <span class="brand">EduGenie</span>
+      <span class="tagline">Gemini-powered learning assistant</span>
+    </div>
+    <span id="status" class="status">Checking API…</span>
+  </header>
+
+  <main class="container">
+    <section class="hero">
+      <h1>Learn smarter, one topic at a time.</h1>
+      <p>Ask questions, get explanations, create quizzes, summarize notes, or build a learning path.</p>
+    </section>
+
+    <nav class="tabs" aria-label="Learning tools">
+      <button class="tab active" data-tab="ask">Q&A</button>
+      <button class="tab" data-tab="explain">Explain</button>
+      <button class="tab" data-tab="quiz">Quiz</button>
+      <button class="tab" data-tab="summary">Summary</button>
+      <button class="tab" data-tab="learn">Learning Path</button>
+    </nav>
+
+    <section id="ask" class="panel active">
+      <h2>Ask a question</h2>
+      <label>Question
+        <textarea id="ask-question" placeholder="Example: What is an operating system?"></textarea>
+      </label>
+      <label>Optional context
+        <textarea id="ask-context" placeholder="Paste notes or textbook context if useful."></textarea>
+      </label>
+      <button class="primary" onclick="askQuestion()">Get answer</button>
+    </section>
+
+    <section id="explain" class="panel">
+      <h2>Explain a concept</h2>
+      <label>Topic
+        <textarea id="explain-topic" placeholder="Example: Inheritance in Java"></textarea>
+      </label>
+      <button class="primary" onclick="explainTopic()">Explain</button>
+    </section>
+
+    <section id="quiz" class="panel">
+      <h2>Generate a quiz</h2>
+      <label>Study material
+        <textarea id="quiz-content" placeholder="Paste a lesson, notes, or topic here."></textarea>
+      </label>
+      <button class="primary" onclick="makeQuiz()">Generate 3-question quiz</button>
+      <div id="quiz-output"></div>
+    </section>
+
+    <section id="summary" class="panel">
+      <h2>Summarize notes</h2>
+      <label>Text
+        <textarea id="summary-text" placeholder="Paste long notes here."></textarea>
+      </label>
+      <button class="primary" onclick="summarize()">Summarize</button>
+    </section>
+
+    <section id="learn" class="panel">
+      <h2>Build a learning path</h2>
+      <label>Topic
+        <input id="learn-topic" placeholder="Example: Python programming">
+      </label>
+      <label>Current level
+        <select id="learn-level">
+          <option>Beginner</option>
+          <option>Intermediate</option>
+          <option>Advanced</option>
+        </select>
+      </label>
+      <button class="primary" onclick="learningPath()">Create path</button>
+    </section>
+
+    <section class="result-card">
+      <div class="result-header">
+        <h2>Result</h2>
+        <button class="secondary" onclick="copyResult()">Copy</button>
+      </div>
+      <pre id="result">Your AI response will appear here.</pre>
+    </section>
+  </main>
+
+  <footer>EduGenie • Educational assistance powered by Gemini</footer>
+  <script src="/static/app.js"></script>
+</body>
+</html>
